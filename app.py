@@ -1,6 +1,6 @@
-from dash import Dash
+from create_app import create_app
 
-app = Dash(__name__)
+app = create_app()
 
 if __name__ == "__main__":
     app.run_server(debug=True)

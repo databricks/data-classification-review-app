@@ -3,6 +3,7 @@ from delta.tables import DeltaTable
 from pyspark.sql import functions
 import time
 from databricks.connect import DatabricksSession
+import const
 
 class SparkClient:
     def __init__(self, logger):
@@ -10,6 +11,7 @@ class SparkClient:
     
     @property
     def _spark(self):
+        self._logger.info("Creating Databricks session")
         return DatabricksSession.builder.serverless(True).getOrCreate()
     
     def get_datasets(self, source_table_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -28,16 +30,16 @@ class SparkClient:
 
         # Filter data where schema_name and table_name equals the source_table_name
         df_filtered = df.filter(
-            (functions.col('schema_name') == schema) & (functions.col('table_name') == table)
+            (functions.col(const.RESULT_TABLE_SCHEMA_NAME_KEY) == schema) & (functions.col(const.RESULT_TABLE_TABLE_NAME_KEY) == table)
         )
         
         # We should have one row per (schema, table, column name, pii entity)
-        grouping_columns = ['schema_name', 'table_name', 'column_name', 'pii_entity']
+        grouping_columns = [const.RESULT_TABLE_SCHEMA_NAME_KEY, const.RESULT_TABLE_TABLE_NAME_KEY, const.SUMMARY_COLUMN_NAME_KEY, const.SUMMARY_PII_ENTITY_KEY]
         
         # Create a helper column for sorting
         df_processed = df_filtered.withColumn(
             'review_status_not_null',
-            functions.when(functions.col('review_status').isNotNull(), 1).otherwise(0)
+            functions.when(functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY).isNotNull(), 1).otherwise(0)
         )
         
         # Create a struct of the fields we need to retain
@@ -45,36 +47,34 @@ class SparkClient:
             'data_struct',
             functions.struct(
                 functions.col('review_status_not_null'),
-                functions.col('scan_id'),
-                functions.col('review_status'),
-                functions.col('rationales'),
-                functions.col('samples')
+                functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY),
+                functions.col(const.SUMMARY_RATIONALES_KEY),
+                functions.col(const.SUMMARY_SAMPLES_KEY)
             )
         )
         
         # Use max_by to get the row with the highest priority per group
         # Priority is defined by review_status_not_null and timestamp
         df_deduped = df_processed.groupBy(*grouping_columns).agg(
-            functions.max_by('data_struct', functions.struct(functions.col('review_status_not_null'), functions.col('timestamp'))).alias('max_struct')
+            functions.max_by('data_struct', functions.struct(functions.col('review_status_not_null'), functions.col(const.RESULT_TABLE_TIMESTAMP_KEY))).alias('max_struct')
         )
         
         # Extract the fields from the struct
         df_deduped = df_deduped.select(
             *grouping_columns,
-            functions.col('max_struct.scan_id').alias('scan_id'),
-            functions.col('max_struct.review_status').alias('review_status'),
-            functions.col('max_struct.rationales')alias('rationales'),
-            functions.col('max_struct.samples').alias('samples')
+            functions.col(f'max_struct.{const.RESULT_TABLE_REVIEW_STATUS_KEY}').alias(const.RESULT_TABLE_REVIEW_STATUS_KEY),
+            functions.col(f'max_struct.{const.SUMMARY_RATIONALES_KEY}').alias(const.SUMMARY_RATIONALES_KEY),
+            functions.col(f'max_struct.{const.SUMMARY_SAMPLES_KEY}').alias(const.SUMMARY_SAMPLES_KEY)
         )
         
         # Split into two DataFrames based on review_status being null
-        df_to_review = df_deduped.filter(functions.col('review_status').isNull())
-        df_reviewed = df_deduped.filter(functions.col('review_status').isNotNull())
+        df_to_review = df_deduped.filter(functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY).isNull()).toPandas()
+        df_reviewed = df_deduped.filter(functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY).isNotNull()).toPandas()
 
         elapsed_time = time.time() - start_time
         self._logger.info(f"Get datasets took {elapsed_time:.2f} seconds")
 
-        return df_to_review.toPandas(), df_reviewed.toPandas()
+        return df_to_review, df_reviewed
 
     def update_review_status(self, source_table_name, updates_list, review_status):
         """
@@ -98,14 +98,14 @@ class SparkClient:
 
         # Prepare the updates DataFrame
         updates_df = self._spark.createDataFrame(updates_list)
-        updates_df = updates_df.withColumn('review_status', functions.lit(review_status))
+        updates_df = updates_df.withColumn(const.RESULT_TABLE_REVIEW_STATUS_KEY, functions.lit(review_status))
 
         # Define merge condition
-        merge_condition = """
-        target.schema_name = source.schema_name AND
-        target.table_name = source.table_name AND
-        target.column_name = source.column_name AND
-        target.pii_entity = source.pii_entity
+        merge_condition = f"""
+        target.{const.RESULT_TABLE_SCHEMA_NAME_KEY} = source.{const.RESULT_TABLE_SCHEMA_NAME_KEY} AND
+        target.{const.RESULT_TABLE_TABLE_NAME_KEY} = source.{const.RESULT_TABLE_TABLE_NAME_KEY} AND
+        target.{const.SUMMARY_COLUMN_NAME_KEY} = source.{const.SUMMARY_COLUMN_NAME_KEY} AND
+        target.{const.SUMMARY_PII_ENTITY_KEY} = source.{const.SUMMARY_PII_ENTITY_KEY}
         """
 
         # Perform the merge
@@ -113,7 +113,7 @@ class SparkClient:
             updates_df.alias('source'),
             merge_condition
         ).whenMatchedUpdate(
-            set={"review_status": "source.review_status"}
+            set={const.RESULT_TABLE_REVIEW_STATUS_KEY: f"source.{const.RESULT_TABLE_REVIEW_STATUS_KEY}"}
         ).execute()
 
         end_time = time.time()
@@ -122,4 +122,4 @@ class SparkClient:
 
     def _get_result_table_name(self, source_table_name: str) -> str:
         catalog, _, _ = source_table_name.split(".")
-        return f"{catalog}._data_classification._result"
+        return f"{catalog}.{const.RESULT_SCHEMA_NAME}.{const.RESULT_TABLE_NAME}"
