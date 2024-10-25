@@ -26,7 +26,7 @@ class SparkClient:
   
         # Get the full result table DF
         table_name = self._get_result_table_name(source_table_name)
-        df = self._spark.read.format("delta").table(table_name)
+        df = self._spark.table(table_name)
 
         # Filter data where schema_name and table_name equals the source_table_name
         df_filtered = df.filter(
