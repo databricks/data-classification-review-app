@@ -87,6 +87,7 @@ class SparkClient:
                 'table_name': table,
                 'column_name': column,
                 'pii_entity': email,
+                'scan_id': scan_id
             }]
         :param review_status: The review status to set
         """
@@ -102,6 +103,7 @@ class SparkClient:
 
         # Define merge condition
         merge_condition = f"""
+        target.{const.RESULT_TABLE_SCAN_ID_KEY} = source.{const.RESULT_TABLE_SCAN_ID_KEY} AND
         target.{const.RESULT_TABLE_SCHEMA_NAME_KEY} = source.{const.RESULT_TABLE_SCHEMA_NAME_KEY} AND
         target.{const.RESULT_TABLE_TABLE_NAME_KEY} = source.{const.RESULT_TABLE_TABLE_NAME_KEY} AND
         target.{const.SUMMARY_COLUMN_NAME_KEY} = source.{const.SUMMARY_COLUMN_NAME_KEY} AND

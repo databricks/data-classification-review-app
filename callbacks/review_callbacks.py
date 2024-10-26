@@ -1,4 +1,5 @@
 from clients.spark_client import SparkClient
+import const
 
 def register_callbacks(app, spark_client: SparkClient):
   import dash
@@ -45,14 +46,14 @@ def register_callbacks(app, spark_client: SparkClient):
             err = str(e)
             if ("session_id is no longer usable" in err):
               err = "Session expired. Please refresh the page."
-              return (
-                  [],
-                  "0 Classifications to review",
-                  [],
-                  "0 Classifications reviewed",
-                  True,
-                  dash.html.P(err, className="error-toast-content"),
-              )
+            return (
+                [],
+                "0 Classifications to review",
+                [],
+                "0 Classifications reviewed",
+                True,
+                dash.html.P(err, className="error-toast-content"),
+            )
 
 
   def update_review_status_and_return(value, status, selected_rows):
@@ -63,6 +64,7 @@ def register_callbacks(app, spark_client: SparkClient):
               "table_name": table,
               "column_name": row["column_name"],
               "pii_entity": row["pii_entity"],
+              const.RESULT_TABLE_SCAN_ID_KEY: row[const.RESULT_TABLE_SCAN_ID_KEY],
           }
           for row in selected_rows
       ]
