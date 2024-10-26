@@ -6,12 +6,19 @@ from databricks.connect import DatabricksSession
 import const
 
 class SparkClient:
+
+    GROUPING_COLUMNS = [
+        const.RESULT_TABLE_SCHEMA_NAME_KEY, 
+        const.RESULT_TABLE_TABLE_NAME_KEY, 
+        const.SUMMARY_COLUMN_NAME_KEY, 
+        const.SUMMARY_PII_ENTITY_KEY
+    ]
+
     def __init__(self, logger):
         self._logger = logger
     
     @property
     def _spark(self):
-        self._logger.info("Creating Databricks session")
         return DatabricksSession.builder.serverless(True).getOrCreate()
     
     def get_datasets(self, source_table_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -34,19 +41,19 @@ class SparkClient:
         )
         
         # We should have one row per (schema, table, column name, pii entity)
-        grouping_columns = [const.RESULT_TABLE_SCHEMA_NAME_KEY, const.RESULT_TABLE_TABLE_NAME_KEY, const.SUMMARY_COLUMN_NAME_KEY, const.SUMMARY_PII_ENTITY_KEY]
+        grouping_columns = SparkClient.GROUPING_COLUMNS
         
         # Create a helper column for sorting
         df_processed = df_filtered.withColumn(
-            'review_status_not_null',
+            "review_status_not_null",
             functions.when(functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY).isNotNull(), 1).otherwise(0)
         )
         
         # Create a struct of the fields we need to retain
         df_processed = df_processed.withColumn(
-            'data_struct',
+            "data_struct",
             functions.struct(
-                functions.col('review_status_not_null'),
+                functions.col("review_status_not_null"),
                 functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY),
                 functions.col(const.SUMMARY_RATIONALES_KEY),
                 functions.col(const.SUMMARY_SAMPLES_KEY)
@@ -56,15 +63,15 @@ class SparkClient:
         # Use max_by to get the row with the highest priority per group
         # Priority is defined by review_status_not_null and timestamp
         df_deduped = df_processed.groupBy(*grouping_columns).agg(
-            functions.max_by('data_struct', functions.struct(functions.col('review_status_not_null'), functions.col(const.RESULT_TABLE_TIMESTAMP_KEY))).alias('max_struct')
+            functions.max_by("data_struct", functions.struct(functions.col("review_status_not_null"), functions.col(const.RESULT_TABLE_TIMESTAMP_KEY))).alias("max_struct")
         )
         
         # Extract the fields from the struct
         df_deduped = df_deduped.select(
             *grouping_columns,
-            functions.col(f'max_struct.{const.RESULT_TABLE_REVIEW_STATUS_KEY}').alias(const.RESULT_TABLE_REVIEW_STATUS_KEY),
-            functions.col(f'max_struct.{const.SUMMARY_RATIONALES_KEY}').alias(const.SUMMARY_RATIONALES_KEY),
-            functions.col(f'max_struct.{const.SUMMARY_SAMPLES_KEY}').alias(const.SUMMARY_SAMPLES_KEY)
+            functions.col(f"max_struct.{const.RESULT_TABLE_REVIEW_STATUS_KEY}").alias(const.RESULT_TABLE_REVIEW_STATUS_KEY),
+            functions.col(f"max_struct.{const.SUMMARY_RATIONALES_KEY}").alias(const.SUMMARY_RATIONALES_KEY),
+            functions.col(f"max_struct.{const.SUMMARY_SAMPLES_KEY}").alias(const.SUMMARY_SAMPLES_KEY)
         )
         
         # Split into two DataFrames based on review_status being null
@@ -87,6 +94,7 @@ class SparkClient:
                 'table_name': table,
                 'column_name': column,
                 'pii_entity': email,
+                'scan_id': scan_id
             }]
         :param review_status: The review status to set
         """
@@ -102,6 +110,7 @@ class SparkClient:
 
         # Define merge condition
         merge_condition = f"""
+        target.{const.RESULT_TABLE_SCAN_ID_KEY} = source.{const.RESULT_TABLE_SCAN_ID_KEY} AND
         target.{const.RESULT_TABLE_SCHEMA_NAME_KEY} = source.{const.RESULT_TABLE_SCHEMA_NAME_KEY} AND
         target.{const.RESULT_TABLE_TABLE_NAME_KEY} = source.{const.RESULT_TABLE_TABLE_NAME_KEY} AND
         target.{const.SUMMARY_COLUMN_NAME_KEY} = source.{const.SUMMARY_COLUMN_NAME_KEY} AND
@@ -109,8 +118,8 @@ class SparkClient:
         """
 
         # Perform the merge
-        delta_table.alias('target').merge(
-            updates_df.alias('source'),
+        delta_table.alias("target").merge(
+            updates_df.alias("source"),
             merge_condition
         ).whenMatchedUpdate(
             set={const.RESULT_TABLE_REVIEW_STATUS_KEY: f"source.{const.RESULT_TABLE_REVIEW_STATUS_KEY}"}
