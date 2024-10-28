@@ -82,6 +82,15 @@ def register_callbacks(app, spark_client: SparkClient):
           for row in selected_rows
       ]
       try:
+          if (status == "apply_tag"):
+            updates_dict = {}
+            for row in selected_rows:
+                if row[const.SUMMARY_COLUMN_NAME_KEY] not in updates_dict:
+                    updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]] = []
+                updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]].append(row[const.SUMMARY_PII_ENTITY_KEY])
+            # TODO: Replace this with a service call once the service endpoint is ready
+            spark_client.apply_tags(value, updates_dict)
+
           spark_client.update_review_status(value, updates_list, status)
           updated_data = spark_client.get_datasets(value)
           unreviewed_data = updated_data[0].to_dict("records")
@@ -99,10 +108,10 @@ def register_callbacks(app, spark_client: SparkClient):
           if ("session_id is no longer usable" in err):
               err = "Session expired. Please refresh the page."
           return (
-              [],
-              "0 Classifications to review",
-              [],
-              "0 Classifications reviewed",
+              dash.no_update,
+              dash.no_update,
+              dash.no_update,
+              dash.no_update,
               True,
               dash.html.P(err, className="error-toast-content"),
           )
