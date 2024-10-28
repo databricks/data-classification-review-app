@@ -19,8 +19,13 @@ class SparkClient:
     
     @property
     def _spark(self):
-        self._logger.info("Creating Databricks session")
         return DatabricksSession.builder.serverless(True).getOrCreate()
+    
+    def refresh_cluster(self, n_intervals):
+        start_time = time.time()
+        self._spark.sql("SELECT 1;")
+        elapsed_time = time.time() - start_time
+        self._logger.info(f"Refreshing cluster {n_intervals} took {elapsed_time:.2f} seconds")
     
     def get_datasets(self, source_table_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -55,6 +60,7 @@ class SparkClient:
             "data_struct",
             functions.struct(
                 functions.col("review_status_not_null"),
+                functions.col(const.RESULT_TABLE_SCAN_ID_KEY),
                 functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY),
                 functions.col(const.SUMMARY_RATIONALES_KEY),
                 functions.col(const.SUMMARY_SAMPLES_KEY)
@@ -70,6 +76,7 @@ class SparkClient:
         # Extract the fields from the struct
         df_deduped = df_deduped.select(
             *grouping_columns,
+            functions.col(f"max_struct.{const.RESULT_TABLE_SCAN_ID_KEY}").alias(const.RESULT_TABLE_SCAN_ID_KEY),
             functions.col(f"max_struct.{const.RESULT_TABLE_REVIEW_STATUS_KEY}").alias(const.RESULT_TABLE_REVIEW_STATUS_KEY),
             functions.col(f"max_struct.{const.SUMMARY_RATIONALES_KEY}").alias(const.SUMMARY_RATIONALES_KEY),
             functions.col(f"max_struct.{const.SUMMARY_SAMPLES_KEY}").alias(const.SUMMARY_SAMPLES_KEY)

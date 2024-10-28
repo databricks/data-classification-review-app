@@ -1,28 +1,41 @@
 from clients.spark_client import SparkClient
-import const
 
 def register_callbacks(app, spark_client: SparkClient):
+  import const
   import dash
   import dash_bootstrap_components as dbc
+  from components import intervals, grid, tabs, notification, actions
 
   @dash.callback(
-      dash.Output("unreviewed-data", "rowData"),
-      dash.Output("unreviewed-header", "children"),
-      dash.Output("reviewed-data", "rowData", allow_duplicate=True),
-      dash.Output("reviewed-header", "children", allow_duplicate=True),
-      dash.Output("error-notification", "is_open"),
-      dash.Output("error-notification", "children"),
-      dash.Input("source-table-input", "n_submit"),
-      dash.State("source-table-input", "value"),
+      dash.Input(intervals.initial_refresh_interval_id, "n_intervals"),
+  )
+  def refresh_cluster_initial(n_intervals):
+      spark_client.refresh_cluster("initial-" + str(n_intervals))
+
+  @dash.callback(
+      dash.Input(intervals.long_refresh_interval_id, "n_intervals"),
+  )
+  def refresh_cluster_long(n_intervals):
+      spark_client.refresh_cluster("long-" + str(n_intervals))
+
+  @dash.callback(
+      dash.Output(grid.unreviewed_grid_id, "rowData"),
+      dash.Output(tabs.to_review_tab_header_id, "children"),
+      dash.Output(grid.reviewed_grid_id, "rowData", allow_duplicate=True),
+      dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
+      dash.Output(notification.error_notificaton_id, "is_open"),
+      dash.Output(notification.error_notificaton_id, "children"),
+      dash.Input(actions.search_id, "n_submit"),
+      dash.State(actions.search_id, "value"),
       prevent_initial_call=True,
       running=[
           (
-              dash.Output("content-spinner", "spinner_style"),
+              dash.Output(notification.content_spinner_id, "spinner_style"),
               {"display": "block"},
               {"display": "none"},
           ),
           (
-              dash.Output("tab-container", "style"),
+              dash.Output(tabs.tabs_id, "style"),
               {"visibility": "hidden"},
               {"visibility": "visible"},
           ),
@@ -44,8 +57,6 @@ def register_callbacks(app, spark_client: SparkClient):
               )
           except Exception as e:
             err = str(e)
-            if ("session_id is no longer usable" in err):
-              err = "Session expired. Please refresh the page."
             return (
                 [],
                 "0 Classifications to review",
@@ -60,10 +71,10 @@ def register_callbacks(app, spark_client: SparkClient):
       _, schema, table = value.split(".")
       updates_list = [
           {
-              "schema_name": schema,
-              "table_name": table,
-              "column_name": row["column_name"],
-              "pii_entity": row["pii_entity"],
+              const.RESULT_TABLE_SCHEMA_NAME_KEY: schema,
+              const.RESULT_TABLE_TABLE_NAME_KEY: table,
+              const.SUMMARY_COLUMN_NAME_KEY: row[const.SUMMARY_COLUMN_NAME_KEY],
+              const.SUMMARY_PII_ENTITY_KEY: row[const.SUMMARY_PII_ENTITY_KEY],
               const.RESULT_TABLE_SCAN_ID_KEY: row[const.RESULT_TABLE_SCAN_ID_KEY],
           }
           for row in selected_rows
@@ -104,31 +115,31 @@ def register_callbacks(app, spark_client: SparkClient):
           return ["Apply classification tags", true, "Reject", true]
       }
       """,
-      dash.Output("apply-tags-button", "children"),
-      dash.Output("apply-tags-button", "disabled"),
-      dash.Output("reject-button", "children"),
-      dash.Output("reject-button", "disabled"),
-      dash.Input("unreviewed-data", "selectedRows"),
+      dash.Output(actions.apply_action_id, "children"),
+      dash.Output(actions.apply_action_id, "disabled"),
+      dash.Output(actions.reject_action_id, "children"),
+      dash.Output(actions.reject_action_id, "disabled"),
+      dash.Input(grid.unreviewed_grid_id, "selectedRows"),
       prevent_initial_call=True,
   )
 
 
   @dash.callback(
-      dash.Output("unreviewed-data", "rowData", allow_duplicate=True),
-      dash.Output("unreviewed-header", "children", allow_duplicate=True),
-      dash.Output("reviewed-data", "rowData", allow_duplicate=True),
-      dash.Output("reviewed-header", "children", allow_duplicate=True),
-      dash.Output("error-notification", "is_open", allow_duplicate=True),
-      dash.Output("error-notification", "children", allow_duplicate=True),
-      dash.Input("apply-tags-button", "n_clicks"),
-      dash.State("unreviewed-data", "selectedRows"),
-      dash.State("source-table-input", "value"),
+      dash.Output(grid.unreviewed_grid_id, "rowData", allow_duplicate=True),
+      dash.Output(tabs.to_review_tab_header_id, "children", allow_duplicate=True),
+      dash.Output(grid.reviewed_grid_id, "rowData", allow_duplicate=True),
+      dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
+      dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
+      dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
+      dash.Input(actions.apply_action_id, "n_clicks"),
+      dash.State(grid.unreviewed_grid_id, "selectedRows"),
+      dash.State(actions.search_id, "value"),
       prevent_initial_call=True,
       running=[
-          (dash.Output("apply-tags-button", "disabled"), True, False),
-          (dash.Output("reject-button", "disabled"), True, False),
+          (dash.Output(actions.apply_action_id, "disabled"), True, False),
+          (dash.Output(actions.reject_action_id, "disabled"), True, False),
           (
-              dash.Output("apply-tags-button", "children"),
+              dash.Output(actions.apply_action_id, "children"),
               [dbc.Spinner(size="sm", spinner_class_name="me-2"), "Applying tags..."],
               ["Apply classification tags"],
           ),
@@ -140,21 +151,21 @@ def register_callbacks(app, spark_client: SparkClient):
 
 
   @dash.callback(
-      dash.Output("unreviewed-data", "rowData", allow_duplicate=True),
-      dash.Output("unreviewed-header", "children", allow_duplicate=True),
-      dash.Output("reviewed-data", "rowData", allow_duplicate=True),
-      dash.Output("reviewed-header", "children", allow_duplicate=True),
-      dash.Output("error-notification", "is_open", allow_duplicate=True),
-      dash.Output("error-notification", "children", allow_duplicate=True),
-      dash.Input("reject-button", "n_clicks"),
-      dash.State("unreviewed-data", "selectedRows"),
-      dash.State("source-table-input", "value"),
+      dash.Output(grid.unreviewed_grid_id, "rowData", allow_duplicate=True),
+      dash.Output(tabs.to_review_tab_header_id, "children", allow_duplicate=True),
+      dash.Output(grid.reviewed_grid_id, "rowData", allow_duplicate=True),
+      dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
+      dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
+      dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
+      dash.Input(actions.reject_action_id, "n_clicks"),
+      dash.State(grid.unreviewed_grid_id, "selectedRows"),
+      dash.State(actions.search_id, "value"),
       prevent_initial_call=True,
       running=[
-          (dash.Output("apply-tags-button", "disabled"), True, False),
-          (dash.Output("reject-button", "disabled"), True, False),
+          (dash.Output(actions.apply_action_id, "disabled"), True, False),
+          (dash.Output(actions.reject_action_id, "disabled"), True, False),
           (
-              dash.Output("reject-button", "children"),
+              dash.Output(actions.reject_action_id, "children"),
               [dbc.Spinner(size="sm", spinner_class_name="me-2"), "Rejecting..."],
               ["Reject"],
           ),
