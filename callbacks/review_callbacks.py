@@ -57,6 +57,8 @@ def register_callbacks(app, spark_client: SparkClient):
               )
           except Exception as e:
             err = str(e)
+            if ("session_id is no longer usable" in err):
+              err = "Session expired. Please refresh the page."
             return (
                 [],
                 "0 Classifications to review",
