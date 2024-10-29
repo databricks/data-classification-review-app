@@ -10,9 +10,9 @@ dagcomponentfuncs.RenameRenderer = function (props) {
 
   let renamedValue = props.value;
   if (props.colDef.field === "review_status") {
-    if (props.value === "apply_tag") {
+    if (props.value === "applied_tag") {
       renamedValue = "Applied tag";
-    } else if (props.value === "reject") {
+    } else if (props.value === "rejected") {
       renamedValue = "Rejected";
     }
   }

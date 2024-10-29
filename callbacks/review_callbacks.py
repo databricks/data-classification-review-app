@@ -158,7 +158,7 @@ def register_callbacks(app, spark_client: SparkClient):
   )
   def apply_tags(n_clicks, selected_rows, value):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "apply_tag", selected_rows)
+          return update_review_status_and_return(value, "applied_tag", selected_rows)
 
 
   @dash.callback(
@@ -184,4 +184,4 @@ def register_callbacks(app, spark_client: SparkClient):
   )
   def reject(n_clicks, selected_rows, value):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "reject", selected_rows)
+          return update_review_status_and_return(value, "rejected", selected_rows)
