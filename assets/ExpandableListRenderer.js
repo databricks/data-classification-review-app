@@ -14,12 +14,14 @@ dagcomponentfuncs.ExpandableListRenderer = function (props) {
     // Samples column has a special case where we display a custom msg if the value is None but pii_entity is defined
     if (props.colDef.field === "samples" && !!props.data["pii_entity"]) {
       value = "PII detected in metadata";
+      return React.createElement(
+        "div",
+        { style: { "font-style": "italic" } },
+        value
+      );
     }
-    return React.createElement(
-      "div",
-      { style: { "font-style": "italic" } },
-      value
-    );
+
+    return React.createElement("div", { className: "none-value" }, "None");
   }
 
   const args = isExpanded ? props.value : props.value.join(",");

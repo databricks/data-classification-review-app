@@ -38,3 +38,7 @@
     padding: 0 0.4rem;
     font-size: small;
 }
+
+.none-value {
+    color: rgb(193, 195, 207);
+}
