@@ -1,6 +1,7 @@
 from clients.spark_client import SparkClient
 
 def register_callbacks(app, spark_client: SparkClient):
+  from collections import defaultdict
   import const
   import dash
   import dash_bootstrap_components as dbc
@@ -82,11 +83,9 @@ def register_callbacks(app, spark_client: SparkClient):
           for row in selected_rows
       ]
       try:
-          if (status == "apply_tag"):
-            updates_dict = {}
+          if (status == "applied_tag"):
+            updates_dict = defaultdict(list)
             for row in selected_rows:
-                if row[const.SUMMARY_COLUMN_NAME_KEY] not in updates_dict:
-                    updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]] = []
                 updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]].append(row[const.SUMMARY_PII_ENTITY_KEY])
             # TODO: Replace this with a service call once the service endpoint is ready
             spark_client.apply_tags(value, updates_dict)

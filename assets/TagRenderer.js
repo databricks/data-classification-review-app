@@ -5,7 +5,7 @@ var dagcomponentfuncs = (window.dashAgGridComponentFunctions =
 // Used by the following columns: pii_entity
 dagcomponentfuncs.TagRenderer = function (props) {
   if (!props.value) {
-    return React.createElement("div", null, null);
+    return React.createElement("div", { className: "none-value" }, "None");
   }
 
   const formattedValue =

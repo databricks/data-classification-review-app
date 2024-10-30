@@ -5,7 +5,7 @@ from pyspark.sql import functions
 import time
 from databricks.connect import DatabricksSession
 import const
-from utils import retry, table_utils
+from utils import table_utils
 
 
 class SparkClient:
@@ -69,7 +69,7 @@ class SparkClient:
         for column in updates_dict:
             tags = {f"system_{entity}": "" for entity in updates_dict[column]}
             self._set_column_tags(source_table_name, column, tags)
-            time.sleep(0.5)
+            time.sleep(0.25)
 
         end_time = time.time()
         elapsed_time = end_time - start_time
