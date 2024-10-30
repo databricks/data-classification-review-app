@@ -110,11 +110,18 @@ class SparkClient:
             ).otherwise(0),
         )
 
+        # Create a helper column for pii_entity being not null
+        df_processed = df_processed.withColumn(
+            "pii_entity_not_null",
+            functions.when(
+                functions.col(const.SUMMARY_PII_ENTITY_KEY).isNotNull(), 1
+            ).otherwise(0),
+        )
+
         # Create a struct of the fields we need to retain
         df_processed = df_processed.withColumn(
             "data_struct",
             functions.struct(
-                functions.col("review_status_not_null"),
                 functions.col(const.RESULT_TABLE_SCAN_ID_KEY),
                 functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY),
                 functions.col(const.SUMMARY_RATIONALES_KEY),
@@ -123,11 +130,12 @@ class SparkClient:
         )
 
         # Use max_by to get the row with the highest priority per group
-        # Priority is defined by review_status_not_null and timestamp
+        # Priority is defined by pii_entity_not_null, review_status_not_null and timestamp (in that order)
         df_deduped = df_processed.groupBy(*grouping_columns).agg(
             functions.max_by(
                 "data_struct",
                 functions.struct(
+                    functions.col("pii_entity_not_null"),
                     functions.col("review_status_not_null"),
                     functions.col(const.RESULT_TABLE_TIMESTAMP_KEY),
                 ),
