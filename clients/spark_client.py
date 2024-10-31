@@ -94,9 +94,11 @@ class SparkClient:
         df = self._spark.table(table_name)
 
         # Filter data where schema_name and table_name equals the source_table_name
+        # and PII entity is not null. The rows with no detected PII entity will be displayed in a separate table.
         df_filtered = df.filter(
             (functions.col(const.RESULT_TABLE_SCHEMA_NAME_KEY) == schema)
             & (functions.col(const.RESULT_TABLE_TABLE_NAME_KEY) == table)
+            & (functions.col(const.SUMMARY_PII_ENTITY_KEY).isNotNull())
         )
 
         # We should have one row per (schema, table, column name, pii entity)
