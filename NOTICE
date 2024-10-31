@@ -1,0 +1,74 @@
+Copyright (2024) Databricks, Inc.
+
+This Software includes software developed at Databricks (https://www.databricks.com/).
+
+________________
+This Software contains code from the following open source projects, licensed under the Apache 2.0 license (https://www.apache.org/licenses/LICENSE-2.0):
+
+gradio-app/gradio - https://github.com/gradio-app/gradio
+Copyright gradio authors
+
+streamlit/streamlit - https://github.com/streamlit/streamlit
+Copyright streamlit authors
+Notice - https://github.com/streamlit/streamlit/blob/develop/NOTICES
+
+databricks/databricks-sdk-py - https://github.com/databricks/databricks-sdk-py
+Copyright (2023) Databricks, Inc. 
+Notice - https://github.com/databricks/databricks-sdk-py/blob/main/NOTICE
+
+databricks/databricks-sql-python - https://github.com/databricks/databricks-sql-python
+Copyright (2022) Databricks, Inc. 
+
+mlflow/mlflow - https://github.com/mlflow/mlflow/tree/master
+Copyright 2018 Databricks, Inc.  All rights reserved.
+
+facultyai/dash-bootstrap-components - https://github.com/facultyai/dash-bootstrap-components
+Copyright 2018-2024 Faculty Science Ltd.
+
+________________
+This Software contains code from the following open source projects, licensed under the MIT license (https://opensource.org/license/mit):
+
+plotly/dash - https://github.com/plotly/dash
+Copyright (c) 2023 Plotly, Inc
+
+plotly/dash-ag-grid - https://github.com/plotly/dash-ag-grid
+Copyright (c) 2023-2024 Plotly Technologies Inc.
+
+plotly/plotly.py - https://github.com/plotly/plotly.py
+Copyright (c) 2016-2024 Plotly Technologies Inc.
+
+posit-dev/py-shiny - https://github.com/posit-dev/py-shiny
+Copyright (c) 2023 Posit Software, PBC
+
+fastapi/fastapi - https://github.com/fastapi/fastapi
+Copyright (c) 2018 Sebastián Ramírez
+
+benoitc/gunicorn - https://github.com/benoitc/gunicorn
+2009-2024 (c) Benoît Chesneau <benoitc@gunicorn.org>
+2009-2015 (c) Paul J. Davis <paul.joseph.davis@gmail.com>
+
+snehilvj/dash-mantine-components - https://github.com/snehilvj/dash-mantine-components
+Copyright (c) 2022 Snehil Vijay
+
+predict-idlab/plotly-resampler - https://github.com/predict-idlab/plotly-resampler
+Copyright (c) 2023 Jonas Van Der Donckt, Jeroen Van Der Donckt, Emiel Deprost
+
+________________
+This Software contains code from the following open source projects, licensed under the BSD 3-clause license  (https://opensource.org/license/bsd-3-clause):
+
+pallets/flask - https://github.com/pallets/flask
+Copyright 2010 Pallets
+
+encode/uvicorn - https://github.com/encode/uvicorn
+Copyright © 2017-present, Encode OSS Ltd. All rights reserved.
+
+pandas-dev/pandas - https://github.com/pandas-dev/pandas
+Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team
+All rights reserved.
+Copyright (c) 2011-2024, Open source contributors.
+
+________________
+This Software contains code from the following open source projects, licensed under the Databricks (DB)  license (https://www.databricks.com/legal/db-license):
+
+databricks-connect - https://pypi.org/project/databricks-connect/
+Copyright Databricks, Inc. 
