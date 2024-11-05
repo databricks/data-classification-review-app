@@ -1,11 +1,12 @@
 from clients.spark_client import SparkClient
+from clients.databricks_client import DatabricksClient
 
-def register_callbacks(app, spark_client: SparkClient):
+def register_callbacks(app, spark_client: SparkClient, databricks_client: DatabricksClient):
   from collections import defaultdict
   import const
   import dash
   import dash_bootstrap_components as dbc
-  from components import intervals, grid, tabs, notification, actions
+  from components import intervals, grid, tabs, notification, actions, store
 
   @dash.callback(
       dash.Input(intervals.initial_refresh_interval_id, "n_intervals"),
@@ -70,7 +71,8 @@ def register_callbacks(app, spark_client: SparkClient):
             )
 
 
-  def update_review_status_and_return(value, status, selected_rows):
+  def update_review_status_and_return(value, status, selected_rows, token_data):
+      token_data = token_data or {}
       _, schema, table = value.split(".")
       updates_list = [
           {
@@ -83,12 +85,21 @@ def register_callbacks(app, spark_client: SparkClient):
           for row in selected_rows
       ]
       try:
-          if (status == "applied_tag"):
-            updates_dict = defaultdict(list)
-            for row in selected_rows:
-                updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]].append(row[const.SUMMARY_PII_ENTITY_KEY])
-            # TODO: Replace this with a service call once the service endpoint is ready
-            spark_client.apply_tags(value, updates_dict)
+          updates_list = []
+          for row in selected_rows:
+            updates_list.append({
+                "column_name": row[const.SUMMARY_COLUMN_NAME_KEY],
+                "data_class": row[const.SUMMARY_PII_ENTITY_KEY]
+            })
+
+          if status == "applied_tag":
+            accepted_classifications = updates_list
+            rejected_classifications = None
+          else:
+            accepted_classifications = None
+            rejected_classifications = updates_list
+
+          _, latest_token, latest_token_expiration = databricks_client.apply_review_results(value, accepted_classifications, rejected_classifications, token_data.get("token"), token_data.get("token_expiration"))
 
           spark_client.update_review_status(value, updates_list, status)
           updated_data = spark_client.get_datasets(value)
@@ -101,6 +112,10 @@ def register_callbacks(app, spark_client: SparkClient):
               f"{str(len(reviewed_data))} Classifications reviewed",
               False,
               "",
+              {
+                  "token": latest_token,
+                  "token_expiration": latest_token_expiration
+              }
           )
       except Exception as e:
           err = str(e)
@@ -113,6 +128,7 @@ def register_callbacks(app, spark_client: SparkClient):
               dash.no_update,
               True,
               dash.html.P(err, className="error-toast-content"),
+              dash.no_update
           )
 
 
@@ -141,9 +157,11 @@ def register_callbacks(app, spark_client: SparkClient):
       dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
+      dash.Output(store.token_store_id, 'data', allow_duplicate=True),
       dash.Input(actions.apply_action_id, "n_clicks"),
       dash.State(grid.unreviewed_grid_id, "selectedRows"),
       dash.State(actions.search_id, "value"),
+      dash.State(store.token_store_id, 'data'),
       prevent_initial_call=True,
       running=[
           (dash.Output(actions.apply_action_id, "disabled"), True, False),
@@ -155,9 +173,9 @@ def register_callbacks(app, spark_client: SparkClient):
           ),
       ],
   )
-  def apply_tags(n_clicks, selected_rows, value):
+  def apply_tags(n_clicks, selected_rows, value, data):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "applied_tag", selected_rows)
+          return update_review_status_and_return(value, "applied_tag", selected_rows, data)
 
 
   @dash.callback(
@@ -167,9 +185,11 @@ def register_callbacks(app, spark_client: SparkClient):
       dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
+      dash.Output(store.token_store_id, 'data', allow_duplicate=True),
       dash.Input(actions.reject_action_id, "n_clicks"),
       dash.State(grid.unreviewed_grid_id, "selectedRows"),
       dash.State(actions.search_id, "value"),
+      dash.State(store.token_store_id, 'data'),
       prevent_initial_call=True,
       running=[
           (dash.Output(actions.apply_action_id, "disabled"), True, False),
@@ -181,6 +201,6 @@ def register_callbacks(app, spark_client: SparkClient):
           ),
       ],
   )
-  def reject(n_clicks, selected_rows, value):
+  def reject(n_clicks, selected_rows, value, data):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "rejected", selected_rows)
+          return update_review_status_and_return(value, "rejected", selected_rows, data)

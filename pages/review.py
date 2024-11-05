@@ -1,9 +1,10 @@
 import dash
 import dash_bootstrap_components as dbc
-from components import intervals, tabs, notification, actions
+from components import intervals, tabs, notification, actions, store
 
 layout = dbc.Container(
     [
+        store.token_store,
         intervals.initial_refresh_interval,
         intervals.long_refresh_interval,
         notification.error_notification,
