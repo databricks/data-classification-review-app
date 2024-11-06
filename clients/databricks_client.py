@@ -12,13 +12,12 @@ class DatabricksClient:
 
   def apply_review_results(self, table_name, accepted_classifications, rejected_classifications, token=None, token_expiration=None):
       json_data = {
-          "table_name": table_name,
           "accepted_classifications": accepted_classifications,
           "rejected_classifications": rejected_classifications
       }
       
       return self._make_authenticated_request(
-         f"/data-classification/tables/{table_name}/apply-review-results",
+         f"/api/2.0/data-classification/tables/{table_name}/apply-review-results",
           json_data,
           token,
           token_expiration
@@ -73,6 +72,7 @@ class DatabricksClient:
           response = requests.post(full_url, json=json_data, headers=headers)
           response.raise_for_status()
       else:
+          self._logger.info(f"MOO {vars(response)}")
           # Raise exception for other HTTP errors
           response.raise_for_status()
 
