@@ -6,18 +6,25 @@ def register_callbacks(app, spark_client: SparkClient):
   import dash
   import dash_bootstrap_components as dbc
   from components import intervals, grid, tabs, notification, actions
+  from utils import error_utils
 
   @dash.callback(
       dash.Input(intervals.initial_refresh_interval_id, "n_intervals"),
   )
   def refresh_cluster_initial(n_intervals):
-      spark_client.refresh_cluster("initial-" + str(n_intervals))
-
+      try:
+        spark_client.refresh_cluster("initial-" + str(n_intervals))
+      except Exception as e:
+         app.logger.info(str(e))
+        
   @dash.callback(
       dash.Input(intervals.long_refresh_interval_id, "n_intervals"),
   )
   def refresh_cluster_long(n_intervals):
-      spark_client.refresh_cluster("long-" + str(n_intervals))
+      try:
+        spark_client.refresh_cluster("long-" + str(n_intervals))
+      except Exception as e:
+         app.logger.info(str(e))
 
   @dash.callback(
       dash.Output(grid.unreviewed_grid_id, "rowData"),
@@ -57,9 +64,7 @@ def register_callbacks(app, spark_client: SparkClient):
                   "",
               )
           except Exception as e:
-            err = str(e)
-            if ("session_id is no longer usable" in err):
-              err = "Session expired. Please refresh the page."
+            err = error_utils.reformat_error(e)
             return (
                 [],
                 "0 Classifications to review",
@@ -103,9 +108,7 @@ def register_callbacks(app, spark_client: SparkClient):
               "",
           )
       except Exception as e:
-          err = str(e)
-          if ("session_id is no longer usable" in err):
-              err = "Session expired. Please refresh the page."
+          err = error_utils.reformat_error(e)
           return (
               dash.no_update,
               dash.no_update,
