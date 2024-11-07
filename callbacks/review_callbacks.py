@@ -1,24 +1,30 @@
 from clients.spark_client import SparkClient
-from clients.databricks_client import DatabricksClient
 
-def register_callbacks(app, spark_client: SparkClient, databricks_client: DatabricksClient):
+def register_callbacks(app, spark_client: SparkClient):
   from collections import defaultdict
   import const
   import dash
   import dash_bootstrap_components as dbc
-  from components import intervals, grid, tabs, notification, actions, store
+  from components import intervals, grid, tabs, notification, actions
+  from utils import error_utils
 
   @dash.callback(
       dash.Input(intervals.initial_refresh_interval_id, "n_intervals"),
   )
   def refresh_cluster_initial(n_intervals):
-      spark_client.refresh_cluster("initial-" + str(n_intervals))
-
+      try:
+        spark_client.refresh_cluster("initial-" + str(n_intervals))
+      except Exception as e:
+         app.logger.info(str(e))
+        
   @dash.callback(
       dash.Input(intervals.long_refresh_interval_id, "n_intervals"),
   )
   def refresh_cluster_long(n_intervals):
-      spark_client.refresh_cluster("long-" + str(n_intervals))
+      try:
+        spark_client.refresh_cluster("long-" + str(n_intervals))
+      except Exception as e:
+         app.logger.info(str(e))
 
   @dash.callback(
       dash.Output(grid.unreviewed_grid_id, "rowData"),
@@ -58,9 +64,7 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
                   "",
               )
           except Exception as e:
-            err = str(e)
-            if ("session_id is no longer usable" in err):
-              err = "Session expired. Please refresh the page."
+            err = error_utils.reformat_error(e)
             return (
                 [],
                 "0 Classifications to review",
@@ -71,8 +75,7 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
             )
 
 
-  def update_review_status_and_return(value, status, selected_rows, token_data):
-      token_data = token_data or {}
+  def update_review_status_and_return(value, status, selected_rows):
       _, schema, table = value.split(".")
       updates_list = [
           {
@@ -85,21 +88,12 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
           for row in selected_rows
       ]
       try:
-          updates_list = []
-          for row in selected_rows:
-            updates_list.append({
-                "column_name": row[const.SUMMARY_COLUMN_NAME_KEY],
-                "data_class": row[const.SUMMARY_PII_ENTITY_KEY]
-            })
-
-          if status == "applied_tag":
-            accepted_classifications = updates_list
-            rejected_classifications = None
-          else:
-            accepted_classifications = None
-            rejected_classifications = updates_list
-
-          _, latest_token, latest_token_expiration = databricks_client.apply_review_results(value, accepted_classifications, rejected_classifications, token_data.get("token"), token_data.get("token_expiration"))
+          if (status == "applied_tag"):
+            updates_dict = defaultdict(list)
+            for row in selected_rows:
+                updates_dict[row[const.SUMMARY_COLUMN_NAME_KEY]].append(row[const.SUMMARY_PII_ENTITY_KEY])
+            # TODO: Replace this with a service call once the service endpoint is ready
+            spark_client.apply_tags(value, updates_dict)
 
           spark_client.update_review_status(value, updates_list, status)
           updated_data = spark_client.get_datasets(value)
@@ -112,15 +106,9 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
               f"{str(len(reviewed_data))} Classifications reviewed",
               False,
               "",
-              {
-                  "token": latest_token,
-                  "token_expiration": latest_token_expiration
-              }
           )
       except Exception as e:
-          err = str(e)
-          if ("session_id is no longer usable" in err):
-              err = "Session expired. Please refresh the page."
+          err = error_utils.reformat_error(e)
           return (
               dash.no_update,
               dash.no_update,
@@ -128,7 +116,6 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
               dash.no_update,
               True,
               dash.html.P(err, className="error-toast-content"),
-              dash.no_update
           )
 
 
@@ -157,11 +144,9 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
       dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
-      dash.Output(store.token_store_id, 'data', allow_duplicate=True),
       dash.Input(actions.apply_action_id, "n_clicks"),
       dash.State(grid.unreviewed_grid_id, "selectedRows"),
       dash.State(actions.search_id, "value"),
-      dash.State(store.token_store_id, 'data'),
       prevent_initial_call=True,
       running=[
           (dash.Output(actions.apply_action_id, "disabled"), True, False),
@@ -173,9 +158,9 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
           ),
       ],
   )
-  def apply_tags(n_clicks, selected_rows, value, data):
+  def apply_tags(n_clicks, selected_rows, value):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "applied_tag", selected_rows, data)
+          return update_review_status_and_return(value, "applied_tag", selected_rows)
 
 
   @dash.callback(
@@ -185,11 +170,9 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
       dash.Output(tabs.reviewed_tab_header_id, "children", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "is_open", allow_duplicate=True),
       dash.Output(notification.error_notificaton_id, "children", allow_duplicate=True),
-      dash.Output(store.token_store_id, 'data', allow_duplicate=True),
       dash.Input(actions.reject_action_id, "n_clicks"),
       dash.State(grid.unreviewed_grid_id, "selectedRows"),
       dash.State(actions.search_id, "value"),
-      dash.State(store.token_store_id, 'data'),
       prevent_initial_call=True,
       running=[
           (dash.Output(actions.apply_action_id, "disabled"), True, False),
@@ -201,6 +184,6 @@ def register_callbacks(app, spark_client: SparkClient, databricks_client: Databr
           ),
       ],
   )
-  def reject(n_clicks, selected_rows, value, data):
+  def reject(n_clicks, selected_rows, value):
       if n_clicks > 0 and len(selected_rows) > 0:
-          return update_review_status_and_return(value, "rejected", selected_rows, data)
+          return update_review_status_and_return(value, "rejected", selected_rows)

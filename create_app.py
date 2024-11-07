@@ -1,7 +1,6 @@
 import dash
 import dash_bootstrap_components as dbc
 from clients.spark_client import SparkClient
-from clients.databricks_client import DatabricksClient
 from callbacks import review_callbacks
 from pages import review
 
@@ -17,10 +16,8 @@ def create_app():
     logger = app.logger
     
     spark_client = SparkClient(logger)
-
-    databricks_client = DatabricksClient(logger)
-
-    review_callbacks.register_callbacks(app, spark_client, databricks_client)
+    
+    review_callbacks.register_callbacks(app, spark_client)
 
     app.layout = review.layout
     
