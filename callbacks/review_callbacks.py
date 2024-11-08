@@ -107,11 +107,11 @@ def register_callbacks(
                     }
                 )
 
+            accepted_classifications = None
+            rejected_classifications = None
             if status == "applied_tag":
                 accepted_classifications = apply_review_results_list
-                rejected_classifications = None
-            else:
-                accepted_classifications = None
+            elif status == "rejected":
                 rejected_classifications = apply_review_results_list
 
             _, latest_token, latest_token_expiration = (

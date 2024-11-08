@@ -77,7 +77,7 @@ class DatabricksClient:
             "Content-Type": "application/json",
         }
 
-        self._logger.info(f"Making request with data: {json_data}")
+        self._logger.info(f"Sending request with data: {json_data}")
 
         full_url = self._host + url
 
