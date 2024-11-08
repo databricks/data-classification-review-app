@@ -29,7 +29,7 @@ class SparkClient:
     # which will create a new spark session
     def refresh_cluster(self, n_intervals):
         attempts = 0
-        while (attempts < 2):
+        while attempts < 2:
             try:
                 start_time = time.time()
                 self._spark.sql("SELECT 1;")
@@ -40,7 +40,7 @@ class SparkClient:
                 return
             except Exception as e:
                 attempts += 1
-                if ("session_id is no longer usable" in str(e)):
+                if "session_id is no longer usable" in str(e):
                     self._logger.info("Session expired. Refreshing session.")
                     continue
                 else:
