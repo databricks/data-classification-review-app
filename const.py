@@ -1,4 +1,4 @@
-# These constants are used to reference the results table. 
+# These constants are used to reference the results table.
 # They MUST be the same as the constants defined in data-classification client
 
 RESULT_SCHEMA_NAME = "_data_classification"
