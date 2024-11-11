@@ -13,22 +13,3 @@ SUMMARY_COLUMN_NAME_KEY = "column_name"
 SUMMARY_PII_ENTITY_KEY = "pii_entity"
 SUMMARY_SAMPLES_KEY = "samples"
 SUMMARY_RATIONALES_KEY = "rationales"
-
-# This must be the same as `SensitiveDataClass` defined in data classification service proto
-SENSITIVE_DATA_CLASS_MAP = {
-    "sensitive_data_class_unspecified": 0,
-    "credit_card": 1,
-    "crypto": 2,
-    "email_address": 3,
-    "iban_code": 4,
-    "ip_address": 5,
-    "location": 6,
-    "person": 7,
-    "phone_number": 8,
-    "medical_license": 9,
-    "us_bank_number": 10,
-    "us_driver_license": 11,
-    "us_itin": 12,
-    "us_passport": 13,
-    "us_ssn": 14,
-}

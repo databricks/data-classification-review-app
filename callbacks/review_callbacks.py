@@ -101,9 +101,7 @@ def register_callbacks(
                 apply_review_results_list.append(
                     {
                         "column_name": row[const.SUMMARY_COLUMN_NAME_KEY],
-                        "data_class": const.SENSITIVE_DATA_CLASS_MAP.get(
-                            row[const.SUMMARY_PII_ENTITY_KEY], 0
-                        ),
+                        "data_class": str(row[const.SUMMARY_PII_ENTITY_KEY]).upper(),
                     }
                 )
 
