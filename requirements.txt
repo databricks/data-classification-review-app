@@ -1,2 +1,2 @@
-databricks-connect
+databricks-connect==15.1
 pandas
