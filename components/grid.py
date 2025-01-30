@@ -11,6 +11,13 @@ _common_column_defs = [
         "cellRenderer": "TagRenderer",
     },
     {
+        "field": const.SUMMARY_MATCH_SCORE_KEY,
+        "flex": 0.5,
+        "headerName": "Match",
+        "sort": "desc",
+        "cellRenderer": "MatchScoreRenderer",
+    },
+    {
         "field": const.SUMMARY_SAMPLES_KEY,
         "cellRenderer": "ExpandableListRenderer",
         "wrapText": True,
