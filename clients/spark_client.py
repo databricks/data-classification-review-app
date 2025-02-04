@@ -120,6 +120,7 @@ class SparkClient:
                 functions.col(const.RESULT_TABLE_SCAN_ID_KEY),
                 functions.col(const.RESULT_TABLE_REVIEW_STATUS_KEY),
                 functions.col(const.SUMMARY_RATIONALES_KEY),
+                functions.col(const.SUMMARY_MATCH_SCORE_KEY),
                 functions.col(const.SUMMARY_SAMPLES_KEY),
             ),
         )
@@ -147,6 +148,9 @@ class SparkClient:
             ),
             functions.col(f"max_struct.{const.SUMMARY_RATIONALES_KEY}").alias(
                 const.SUMMARY_RATIONALES_KEY
+            ),
+            functions.col(f"max_struct.{const.SUMMARY_MATCH_SCORE_KEY}").alias(
+                const.SUMMARY_MATCH_SCORE_KEY
             ),
             functions.col(f"max_struct.{const.SUMMARY_SAMPLES_KEY}").alias(
                 const.SUMMARY_SAMPLES_KEY

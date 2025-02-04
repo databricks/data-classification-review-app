@@ -42,3 +42,18 @@
 .none-value {
     color: rgb(193, 195, 207);
 }
+
+.match-icon {
+    transform: rotate(-90deg);
+    display: inline-block;
+    font-size: 17px;
+    margin-right: 3px;
+}
+
+.low-match {
+    color: #DE7921;
+}
+
+.high-match {
+    color: #277C43;
+}
